@@ -208,6 +208,11 @@ function mountLetsScroll(container, config) {
     v.muted = true; v.playsInline = true; v.preload = 'auto';
     v.setAttribute('muted', ''); v.setAttribute('playsinline', '');
     v.src = url;
+    v.load();
+    
+    // Force Safari/iOS to actually fetch the metadata by attempting a muted play
+    try { const p = v.play(); if (p && p.then) p.then(() => { try { v.pause(); } catch(e){} }).catch(()=>{}); } catch(e){}
+
     v.addEventListener('loadedmetadata', () => { s.ready = true; read(); });
     // Reveal the video (hide the still poster) only once a real frame has
     // painted — on iOS a seeked-but-never-played muted video stays blank, so
