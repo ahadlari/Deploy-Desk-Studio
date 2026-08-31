@@ -214,9 +214,18 @@ function mountLetsScroll(container, config) {
         v.muted = true; v.playsInline = true; v.preload = 'auto';
         v.setAttribute('muted', ''); v.setAttribute('playsinline', '');
         v.src = URL.createObjectURL(blob);
-        v.addEventListener('loadedmetadata', () => { s.ready = true; read(); });
+        v.load();
+        
+        // Force the browser to decode the first frame so it doesn't get stuck at readyState 1
+        try { const p = v.play(); if (p && p.then) p.then(() => { try { v.pause(); } catch(e){} }).catch(()=>{}); } catch(e){}
+
+        // Wait for loadeddata (first frame decoded) BEFORE allowing raf() to seek!
+        v.addEventListener('loadeddata', () => { 
+          s.ready = true; 
+          read(); 
+          if (userReady) primeVideo(v); 
+        });
         v.addEventListener('seeked', () => { s.el.classList.add('has-clip'); }, { once: true });
-        v.addEventListener('loadeddata', () => { try { v.pause(); } catch (e) {} if (userReady) primeVideo(v); });
         s.el.appendChild(v); s.video = v; s.hasClip = true;
       }).catch(() => {
         if (loader && loader.parentNode) loader.parentNode.removeChild(loader);
