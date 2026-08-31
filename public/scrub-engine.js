@@ -212,9 +212,18 @@ function mountLetsScroll(container, config) {
         v.muted = true; v.playsInline = true; v.preload = 'auto';
         v.setAttribute('muted', ''); v.setAttribute('playsinline', '');
         v.src = URL.createObjectURL(blob);
-        v.addEventListener('loadedmetadata', () => { s.ready = true; read(); });
+        
+        // CRITICAL FIX: Only set s.ready = true AFTER the first frame is decoded (loadeddata).
+        // If we set it on loadedmetadata, raf() might instantly seek() before the decoder is ready,
+        // which permanently deadlocks Chromium's pipeline and sticks readyState at 1.
+        v.addEventListener('loadeddata', () => { 
+          s.ready = true; 
+          read(); 
+          try { v.pause(); } catch (e) {} 
+          if (userReady) primeVideo(v); 
+        });
+        
         v.addEventListener('seeked', () => { s.el.classList.add('has-clip'); }, { once: true });
-        v.addEventListener('loadeddata', () => { try { v.pause(); } catch (e) {} if (userReady) primeVideo(v); });
         s.el.appendChild(v); s.video = v; s.hasClip = true;
       }).catch(() => {
         if (loader && loader.parentNode) loader.parentNode.removeChild(loader);
