@@ -196,32 +196,32 @@ function mountLetsScroll(container, config) {
   }
 
   function loadClip(s) {
-    // Under prefers-reduced-motion we never load the clips at all — the stills stay up
-    // and simply cross-dissolve as you scroll. No scrubbed video motion, no decode cost.
     if (reduce || s.loading || !s.clip) return;
     s.loading = true;
-    // Serve the lighter mobile encode on phones when one was provided.
     const url = (isMobile() && s.clipM) ? s.clipM : s.clip;
     
-    const v = document.createElement('video');
-    v.className = 'sw-scene__video';
-    v.muted = true; v.playsInline = true; v.preload = 'auto';
-    v.setAttribute('muted', ''); v.setAttribute('playsinline', '');
-    v.src = url;
-    v.load();
-    
-    // Force Safari/iOS to actually fetch the metadata by attempting a muted play
-    try { const p = v.play(); if (p && p.then) p.then(() => { try { v.pause(); } catch(e){} }).catch(()=>{}); } catch(e){}
+    // Create a temporary loading indicator
+    const loader = el('div', 'sw-clip-loader');
+    loader.textContent = 'Loading HQ Video...';
+    loader.style = 'position:absolute;top:20px;right:20px;color:rgba(255,255,255,0.7);font-size:12px;z-index:99;background:rgba(0,0,0,0.5);padding:4px 8px;border-radius:4px;';
+    if (s.el) s.el.appendChild(loader);
 
-    v.addEventListener('loadedmetadata', () => { s.ready = true; read(); });
-    // Reveal the video (hide the still poster) only once a real frame has
-    // painted — on iOS a seeked-but-never-played muted video stays blank, so
-    // hiding the still on metadata alone would flash an empty scene.
-    v.addEventListener('seeked', () => { s.el.classList.add('has-clip'); }, { once: true });
-    v.addEventListener('loadeddata', () => { try { v.pause(); } catch (e) {} if (userReady) primeVideo(v); });
-    v.addEventListener('error', () => { s.loading = false; });
-    
-    s.el.appendChild(v); s.video = v; s.hasClip = true;
+    fetch(url).then(r => r.ok ? r.blob() : Promise.reject(new Error('404')))
+      .then(blob => {
+        if (loader && loader.parentNode) loader.parentNode.removeChild(loader);
+        const v = document.createElement('video');
+        v.className = 'sw-scene__video';
+        v.muted = true; v.playsInline = true; v.preload = 'auto';
+        v.setAttribute('muted', ''); v.setAttribute('playsinline', '');
+        v.src = URL.createObjectURL(blob);
+        v.addEventListener('loadedmetadata', () => { s.ready = true; read(); });
+        v.addEventListener('seeked', () => { s.el.classList.add('has-clip'); }, { once: true });
+        v.addEventListener('loadeddata', () => { try { v.pause(); } catch (e) {} if (userReady) primeVideo(v); });
+        s.el.appendChild(v); s.video = v; s.hasClip = true;
+      }).catch(() => {
+        if (loader && loader.parentNode) loader.parentNode.removeChild(loader);
+        s.loading = false;
+      });
   }
 
   function read() {
