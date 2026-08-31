@@ -202,21 +202,21 @@ function mountLetsScroll(container, config) {
     s.loading = true;
     // Serve the lighter mobile encode on phones when one was provided.
     const url = (isMobile() && s.clipM) ? s.clipM : s.clip;
-    fetch(url).then(r => r.ok ? r.blob() : Promise.reject(new Error('404')))
-      .then(blob => {
-        const v = document.createElement('video');
-        v.className = 'sw-scene__video';
-        v.muted = true; v.playsInline = true; v.preload = 'auto';
-        v.setAttribute('muted', ''); v.setAttribute('playsinline', '');
-        v.src = URL.createObjectURL(blob);
-        v.addEventListener('loadedmetadata', () => { s.ready = true; read(); });
-        // Reveal the video (hide the still poster) only once a real frame has
-        // painted — on iOS a seeked-but-never-played muted video stays blank, so
-        // hiding the still on metadata alone would flash an empty scene.
-        v.addEventListener('seeked', () => { s.el.classList.add('has-clip'); }, { once: true });
-        v.addEventListener('loadeddata', () => { try { v.pause(); } catch (e) {} if (userReady) primeVideo(v); });
-        s.el.appendChild(v); s.video = v; s.hasClip = true;
-      }).catch(() => { s.loading = false; });
+    
+    const v = document.createElement('video');
+    v.className = 'sw-scene__video';
+    v.muted = true; v.playsInline = true; v.preload = 'auto';
+    v.setAttribute('muted', ''); v.setAttribute('playsinline', '');
+    v.src = url;
+    v.addEventListener('loadedmetadata', () => { s.ready = true; read(); });
+    // Reveal the video (hide the still poster) only once a real frame has
+    // painted — on iOS a seeked-but-never-played muted video stays blank, so
+    // hiding the still on metadata alone would flash an empty scene.
+    v.addEventListener('seeked', () => { s.el.classList.add('has-clip'); }, { once: true });
+    v.addEventListener('loadeddata', () => { try { v.pause(); } catch (e) {} if (userReady) primeVideo(v); });
+    v.addEventListener('error', () => { s.loading = false; });
+    
+    s.el.appendChild(v); s.video = v; s.hasClip = true;
   }
 
   function read() {
