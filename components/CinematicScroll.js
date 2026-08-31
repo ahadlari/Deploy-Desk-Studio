@@ -10,9 +10,8 @@ export default function CinematicScroll() {
     if (mountedRef.current) return;
     mountedRef.current = true;
 
-    // Use dynamic import for the non-module/vanilla scrub-engine
-    // to avoid SSR "window is not defined" issues
-    import('./scrub-engine-v3.js').then((engine) => {
+    // Dynamically import the vanilla JS engine
+    import('./scrub-engine-v4.js').then((engine) => {
       if (!containerRef.current) return;
       
       engine.mountLetsScroll(containerRef.current, {

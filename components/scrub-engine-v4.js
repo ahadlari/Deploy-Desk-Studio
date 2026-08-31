@@ -200,37 +200,24 @@ function mountLetsScroll(container, config) {
     s.loading = true;
     const url = (isMobile() && s.clipM) ? s.clipM : s.clip;
     
-    // Create a temporary loading indicator
-    const loader = el('div', 'sw-clip-loader');
-    loader.textContent = 'Loading HQ Video...';
-    loader.style = 'position:absolute;top:20px;right:20px;color:rgba(255,255,255,0.7);font-size:12px;z-index:99;background:rgba(0,0,0,0.5);padding:4px 8px;border-radius:4px;';
-    if (s.el) s.el.appendChild(loader);
-
-    fetch(url).then(r => r.ok ? r.blob() : Promise.reject(new Error('404')))
-      .then(blob => {
-        if (loader && loader.parentNode) loader.parentNode.removeChild(loader);
-        const v = document.createElement('video');
-        v.className = 'sw-scene__video';
-        v.muted = true; v.playsInline = true; v.preload = 'auto';
-        v.setAttribute('muted', ''); v.setAttribute('playsinline', '');
-        v.src = URL.createObjectURL(blob);
-        v.load();
-        
-        // Force the browser to decode the first frame so it doesn't get stuck at readyState 1
-        try { const p = v.play(); if (p && p.then) p.then(() => { try { v.pause(); } catch(e){} }).catch(()=>{}); } catch(e){}
-
-        // Wait for loadeddata (first frame decoded) BEFORE allowing raf() to seek!
-        v.addEventListener('loadeddata', () => { 
-          s.ready = true; 
-          read(); 
-          if (userReady) primeVideo(v); 
-        });
-        v.addEventListener('seeked', () => { s.el.classList.add('has-clip'); }, { once: true });
-        s.el.appendChild(v); s.video = v; s.hasClip = true;
-      }).catch(() => {
-        if (loader && loader.parentNode) loader.parentNode.removeChild(loader);
-        s.loading = false;
-      });
+    const v = document.createElement('video');
+    v.className = 'sw-scene__video';
+    v.muted = true; v.playsInline = true; v.preload = 'auto';
+    v.setAttribute('muted', ''); v.setAttribute('playsinline', '');
+    
+    // NATIVE STREAMING: Bypasses the massive 5-second fetch() delay on Vercel.
+    // Vercel natively supports HTTP Byte-Range requests for /public assets.
+    v.src = url;
+    
+    // Only allow scrubbing after the first frame is fully decoded
+    v.addEventListener('loadeddata', () => { 
+      s.ready = true; 
+      read(); 
+    });
+    
+    v.addEventListener('seeked', () => { s.el.classList.add('has-clip'); }, { once: true });
+    
+    s.el.appendChild(v); s.video = v; s.hasClip = true;
   }
 
   function read() {
