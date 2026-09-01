@@ -200,7 +200,6 @@ function mountLetsScroll(container, config) {
     s.loading = true;
     const url = (isMobile() && s.clipM) ? s.clipM : s.clip;
     
-    // Create a temporary loading indicator
     const loader = el('div', 'sw-clip-loader');
     loader.textContent = 'Loading HQ Video...';
     loader.style = 'position:absolute;top:20px;right:20px;color:rgba(255,255,255,0.7);font-size:12px;z-index:99;background:rgba(0,0,0,0.5);padding:4px 8px;border-radius:4px;';
@@ -216,18 +215,25 @@ function mountLetsScroll(container, config) {
         v.src = URL.createObjectURL(blob);
         v.load();
         
-        // GSAP-style deadlock prevention for Safari/Chromium Blobs:
-        // Force play() then pause() to guarantee the first frame is fully decoded.
-        // Ignore AbortError.
-        try { const p = v.play(); if (p && p.then) p.then(() => { try { v.pause(); } catch(e){} }).catch(()=>{}); } catch(e){}
-
-        // Wait for loadeddata (first frame decoded) BEFORE allowing raf() to seek!
-        v.addEventListener('loadeddata', () => { 
-          s.ready = true; 
+        // Wait for canplaythrough to guarantee entire blob is buffered into decoder
+        v.addEventListener('canplaythrough', () => { 
+          s.ready = true;
+          // Force opacity 1 immediately, don't wait for seeked event!
+          s.el.classList.add('has-clip'); 
           read(); 
           if (userReady) primeVideo(v); 
-        });
-        v.addEventListener('seeked', () => { s.el.classList.add('has-clip'); }, { once: true });
+        }, { once: true });
+        
+        // Fallback: If canplaythrough doesn't fire, try loadeddata
+        v.addEventListener('loadeddata', () => {
+            if (!s.ready) {
+                s.ready = true;
+                s.el.classList.add('has-clip');
+                read();
+                if (userReady) primeVideo(v); 
+            }
+        }, { once: true });
+
         s.el.appendChild(v); s.video = v; s.hasClip = true;
       }).catch(() => {
         if (loader && loader.parentNode) loader.parentNode.removeChild(loader);

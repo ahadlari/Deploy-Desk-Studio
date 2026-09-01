@@ -10,7 +10,7 @@ import Footer from '@/components/Footer';
 export default function Home() {
   return (
     <>
-      {/* Cache Bust V5 */}
+      {/* Cache Bust V6 */}
       <Navbar />
       <main>
         <CinematicScroll />
