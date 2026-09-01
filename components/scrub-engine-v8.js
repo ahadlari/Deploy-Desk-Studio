@@ -198,6 +198,7 @@ function mountLetsScroll(container, config) {
   function loadClip(s) {
     if (reduce || s.loading || !s.clip) return;
     s.loading = true;
+    s.paintReady = true; // Initialize to true so the first seek can happen
     const url = (isMobile() && s.clipM) ? s.clipM : s.clip;
     
     fetch(url).then(r => r.ok ? r.blob() : Promise.reject(new Error('404')))
@@ -209,9 +210,17 @@ function mountLetsScroll(container, config) {
         v.src = URL.createObjectURL(blob);
         
         s.el.appendChild(v); s.video = v; s.hasClip = true;
-        
-        // REVEAL IMMEDIATELY! Chromium suspends decoding of opacity:0 videos.
         s.el.classList.add('has-clip'); 
+        
+        // This is the absolute magic fix for Chromium seek starvation:
+        // We wait for the seek to complete, AND THEN we wait for one full requestAnimationFrame
+        // This guarantees Chromium has time to composite and PAINT the decoded frame to the screen
+        // before we are allowed to issue another seek!
+        v.addEventListener('seeked', () => {
+            requestAnimationFrame(() => {
+                s.paintReady = true;
+            });
+        });
         
         v.addEventListener('loadeddata', () => { 
           s.ready = true;
@@ -300,13 +309,22 @@ function mountLetsScroll(container, config) {
       if (!s.hasClip || !s.ready || !s.video) continue;
       // Skip invisible segments entirely — no point seeking offscreen videos
       if (!s.visible) { s.cur = s.target; continue; }
-      // Never queue a seek while the decoder is still resolving the last one.
-      if (s.video.seeking) continue;
+      
+      // Skip if the browser hasn't had time to paint the PREVIOUS seek yet
+      if (!s.paintReady) continue;
+
       // Higher lerp = snappier response, less "sticky" feel
       s.cur += (s.target - s.cur) * (reduce ? 1 : 0.25);
       const dur = s.video.duration || 1;
       const t = clamp(s.cur, 0, 0.999) * dur;
-      if (Math.abs(s.video.currentTime - t) > eps) { try { s.video.currentTime = t; } catch (e) {} }
+      if (Math.abs(s.video.currentTime - t) > eps) { 
+          try { 
+              s.paintReady = false; // Block further seeks until this one paints
+              s.video.currentTime = t; 
+          } catch (e) {
+              s.paintReady = true; // Recover on error
+          } 
+      }
     }
     requestAnimationFrame(raf);
   }
