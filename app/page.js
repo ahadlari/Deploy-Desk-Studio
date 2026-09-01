@@ -10,7 +10,7 @@ import Footer from '@/components/Footer';
 export default function Home() {
   return (
     <>
-      {/* Cache Bust V6 */}
+      <div id="VERCEL_TEST_v6" style={{display: 'none'}}>VERCEL TEST V6</div>
       <Navbar />
       <main>
         <CinematicScroll />
