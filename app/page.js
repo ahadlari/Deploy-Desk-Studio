@@ -10,7 +10,7 @@ import Footer from '@/components/Footer';
 export default function Home() {
   return (
     <>
-      <div id="VERCEL_TEST_v6" style={{display: 'none'}}>VERCEL TEST V6</div>
+      <div id="VERCEL_TEST_v7" style={{display: 'none'}}>VERCEL TEST V7</div>
       <Navbar />
       <main>
         <CinematicScroll />

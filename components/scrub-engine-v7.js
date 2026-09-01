@@ -200,43 +200,26 @@ function mountLetsScroll(container, config) {
     s.loading = true;
     const url = (isMobile() && s.clipM) ? s.clipM : s.clip;
     
-    const loader = el('div', 'sw-clip-loader');
-    loader.textContent = 'Loading HQ Video...';
-    loader.style = 'position:absolute;top:20px;right:20px;color:rgba(255,255,255,0.7);font-size:12px;z-index:99;background:rgba(0,0,0,0.5);padding:4px 8px;border-radius:4px;';
-    if (s.el) s.el.appendChild(loader);
-
     fetch(url).then(r => r.ok ? r.blob() : Promise.reject(new Error('404')))
       .then(blob => {
-        if (loader && loader.parentNode) loader.parentNode.removeChild(loader);
         const v = document.createElement('video');
         v.className = 'sw-scene__video';
         v.muted = true; v.playsInline = true; v.preload = 'auto';
         v.setAttribute('muted', ''); v.setAttribute('playsinline', '');
         v.src = URL.createObjectURL(blob);
-        v.load();
         
-        // Wait for canplaythrough to guarantee entire blob is buffered into decoder
-        v.addEventListener('canplaythrough', () => { 
+        s.el.appendChild(v); s.video = v; s.hasClip = true;
+        
+        // REVEAL IMMEDIATELY! Chromium suspends decoding of opacity:0 videos.
+        s.el.classList.add('has-clip'); 
+        
+        v.addEventListener('loadeddata', () => { 
           s.ready = true;
-          // Force opacity 1 immediately, don't wait for seeked event!
-          s.el.classList.add('has-clip'); 
           read(); 
           if (userReady) primeVideo(v); 
         }, { once: true });
         
-        // Fallback: If canplaythrough doesn't fire, try loadeddata
-        v.addEventListener('loadeddata', () => {
-            if (!s.ready) {
-                s.ready = true;
-                s.el.classList.add('has-clip');
-                read();
-                if (userReady) primeVideo(v); 
-            }
-        }, { once: true });
-
-        s.el.appendChild(v); s.video = v; s.hasClip = true;
       }).catch(() => {
-        if (loader && loader.parentNode) loader.parentNode.removeChild(loader);
         s.loading = false;
       });
   }
