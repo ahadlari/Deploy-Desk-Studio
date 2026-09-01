@@ -54,8 +54,8 @@ export default function AboutSection() {
             <div className="about__image-wrap">
               <div className="about__image-frame">
                 <img
-                  src="/assets/portrait.jpg"
-                  alt="CutFlow Studio editor"
+                  src="/assets/portrait.jpeg"
+                  alt="Studio Setup"
                   className="about__image"
                 />
                 <div className="about__image-border" />
